@@ -1,0 +1,137 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("POSTGRES_PRISMA_URL")
+  directUrl = env("POSTGRES_URL_NON_POOLING")
+}
+
+model User {
+  id               String    @id @default(uuid())
+  email            String?    @unique
+  username         String?    @unique
+  password         String?
+  image            String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  isStudent        Boolean   @default(true)
+  isPremium        Boolean   @default(false)
+  stripeCustomerId String?
+
+  forums           Forum[]
+  comments         Comment[]
+  forumVotes       ForumVote[]
+  commentVotes     CommentVote[]
+  accounts         Account[]
+  sessions         Session[]
+  columns          Column[]
+
+  @@unique([id, username])
+}
+
+model Account {
+  id                 String    @id @default(uuid())
+  provider           String
+  providerAccountId  String
+  userId             String
+  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  type               String
+  accessToken        String? @db.Text
+  refreshToken       String? @db.Text
+  accessTokenExpires DateTime?
+  tokenType          String?
+  scope              String?
+  idToken            String?  @db.Text
+  sessionState       String?
+  oauthToken         String?
+  oauthTokenSecret   String?
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(uuid())
+  userId       String
+  expires      DateTime
+  sessionToken String   @unique
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Forum {
+  id         String          @id @default(uuid())
+  title      String
+  content    String
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+  author     User            @relation(fields: [authorId], references: [id])
+  authorId   String
+  comments   Comment[]
+  categories ForumCategory[]
+  votes      ForumVote[]
+}
+
+model ForumCategory {
+  id        String   @id @default(uuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  forums    Forum[]
+}
+
+model Comment {
+  id              String    @id @default(uuid())
+  content         String
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  author          User      @relation(fields: [authorId, username], references: [id, username])
+  authorId        String
+  username        String
+  forum           Forum     @relation(fields: [forumId], references: [id])
+  forumId         String
+  votes           CommentVote[]
+  parentComment   Comment?  @relation("replies", fields: [parentCommentId], references: [id])
+  parentCommentId String?
+  childComments   Comment[] @relation("replies")
+
+  @@index([parentCommentId], name: "ParentCommentIndex")
+  @@index([createdAt(sort: Asc)], name: "CreatedAtIndex")
+}
+
+enum VoteType {
+  UP
+  DOWN
+}
+
+model ForumVote {
+  user   User @relation(fields: [userId], references: [id])
+  userId String
+  forum  Forum @relation(fields: [forumId], references: [id], onDelete: Cascade)
+  forumId String
+  type   VoteType
+
+  @@id([userId, forumId])
+}
+
+model CommentVote {
+  user       User @relation(fields: [userId], references: [id])
+  userId     String
+  comment    Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  commentId  String
+  type       VoteType
+
+  @@id([userId, commentId])
+}
+
+model Column {
+  id        String   @id @default(uuid())
+  title     String
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  author    User     @relation(fields: [authorId], references: [id])
+  authorId  String
+}
