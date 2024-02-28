@@ -1,4 +1,4 @@
 ## KABUTO
-git clone
-npm i
-npm run dev
+
+### How to set up
+- it will be filled out
